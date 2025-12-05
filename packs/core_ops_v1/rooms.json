@@ -1,0 +1,149 @@
+{
+  "rooms": [
+    {
+      "id": "room_idempotency",
+      "title": "Idempotency Gone Wrong",
+      "description": "You have an Ansible task that keeps reporting 'changed' on every run. Figure out why and propose a fix that restores idempotency.",
+
+      "metadata": {
+        "difficulty": "intermediate",
+        "tags": ["idempotency", "copy-module"],
+        "recommended_order": 10
+      },
+
+      "artifacts": [
+        {
+          "id": "task_file",
+          "type": "tasks",
+          "label": "roles/web/tasks/main.yml",
+          "content_type": "text/yaml",
+          "content": "---\n- name: Deploy web config\n  copy:\n    src: files/web.conf\n    dest: /etc/web.conf\n    owner: root\n    group: root\n    mode: '0644'\n    force: yes\n"
+        }
+      ],
+
+      "actions": [
+        {
+          "name": "inspect_artifact",
+          "params": {
+            "artifact_id": "task_file",
+            "label": "Inspect tasks file"
+          }
+        },
+        {
+          "name": "run_playbook",
+          "params": {
+            "simulation_id": "idempotency",
+            "handler": { "type": "plugin", "handler": "simulate_idempotency_run" }
+          }
+        },
+        {
+          "name": "propose_fix",
+          "params": {
+            "prompt_label": "Propose a fix (describe the change you would make to this task):",
+            "validator": { "type": "plugin", "handler": "validate_idempotency_fix" }
+          }
+        },
+        {
+          "name": "request_hint",
+          "params": {
+            "label": "Request a hint"
+          }
+        }
+      ],
+
+      "hints": [
+        { "level": 1, "id": "hint_low",  "text": "Look closely at the copy module options. Which one might force a change every run?" },
+        { "level": 2, "id": "hint_mid",  "text": "If the destination file already exists and contents match, the task should be 'ok' not 'changed'." },
+        { "level": 3, "id": "hint_full", "text": "Remove or change 'force: yes'. For example set 'force: no' so the copy only updates when contents differ." }
+      ],
+
+      "success_condition": {
+        "type": "plugin",
+        "handler": "check_idempotency_success"
+      },
+
+      "failure_condition": {
+        "max_attempts": 5,
+        "max_hints": 3,
+        "on_failure": {
+          "type": "exit",
+          "target_room": "room_failure",
+          "message": "You exhausted your attempts on this idempotency puzzle."
+        }
+      },
+
+      "exits": [
+        {
+          "id": "success_exit",
+          "target_room": "room_success",
+          "condition": "on_success"
+        }
+      ]
+    },
+
+    {
+      "id": "room_success",
+      "title": "Configuration Stable",
+      "description": "Nice work. The playbook is now idempotent and only reports changes when something actually changed.",
+
+      "metadata": {
+        "difficulty": "easy",
+        "tags": ["summary"],
+        "recommended_order": 20
+      },
+
+      "artifacts": [],
+      "actions": [
+        {
+          "name": "request_hint",
+          "params": {
+            "label": "Reflect on what you learned (pseudo-hint)."
+          }
+        }
+      ],
+
+      "hints": [
+        { "level": 1, "id": "success_hint_1", "text": "Idempotency means running the play multiple times leads to the same end state." },
+        { "level": 2, "id": "success_hint_2", "text": "Options like 'force: yes' can break idempotency if misused." },
+        { "level": 3, "id": "success_hint_3", "text": "Use 'force' only when you truly want to overwrite a file unconditionally." }
+      ],
+
+      "success_condition": null,
+      "failure_condition": null,
+      "exits": []
+    },
+
+    {
+      "id": "room_failure",
+      "title": "Config Chaos",
+      "description": "You weren’t able to restore idempotency this time. Review what went wrong and try again later.",
+
+      "metadata": {
+        "difficulty": "easy",
+        "tags": ["failure"],
+        "recommended_order": 30
+      },
+
+      "artifacts": [],
+      "actions": [
+        {
+          "name": "request_hint",
+          "params": {
+            "label": "Get a post-mortem hint."
+          }
+        }
+      ],
+
+      "hints": [
+        { "level": 1, "id": "failure_hint_1", "text": "The copy module is idempotent by default when contents don't change." },
+        { "level": 2, "id": "failure_hint_2", "text": "Forcing a copy each run removes idempotency." },
+        { "level": 3, "id": "failure_hint_3", "text": "Focus your fix on the 'force' option in the task." }
+      ],
+
+      "success_condition": null,
+      "failure_condition": null,
+      "exits": []
+    }
+  ]
+}
+
